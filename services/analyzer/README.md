@@ -33,7 +33,7 @@ qui sépare les historiques. Ce n'est **pas** une authentification (Supabase Aut
 Erreurs : `{"error": {"code": "...", "message": "..."}}`.
 
 ## Limites provisoires (choix techniques, non fixés par le cahier)
-- Texte : 300 à 20 000 caractères. Photo : 10 Mo (JPEG, PNG, WebP, HEIC). Vidéo : 100 Mo (MP4, MOV, WebM).
+- Texte : 300 à 20 000 caractères. Photo : 4 Mo (limite des requêtes Vercel) (JPEG, PNG, WebP, HEIC). Vidéo : 100 Mo (MP4, MOV, WebM).
 - Le type réel est vérifié par la signature du fichier, pas par son extension.
 - Hébergement Vercel : requêtes limitées à ~4,5 Mo. Les gros fichiers passeront par Supabase Storage.
 - Historique et limite d'usage (30 analyses/heure) **en mémoire** : effacés au redémarrage,

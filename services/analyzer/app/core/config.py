@@ -17,7 +17,7 @@ PHASE = "phase-5.1"
 
 TEXT_MIN_CHARS = _int("VEYRA_TEXT_MIN_CHARS", 300)
 TEXT_MAX_CHARS = _int("VEYRA_TEXT_MAX_CHARS", 20_000)
-IMAGE_MAX_BYTES = _int("VEYRA_IMAGE_MAX_BYTES", 10 * 1024 * 1024)
+IMAGE_MAX_BYTES = _int("VEYRA_IMAGE_MAX_BYTES", 4 * 1024 * 1024)  # Vercel refuse les requêtes > ~4,5 Mo
 VIDEO_MAX_BYTES = _int("VEYRA_VIDEO_MAX_BYTES", 100 * 1024 * 1024)
 
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}

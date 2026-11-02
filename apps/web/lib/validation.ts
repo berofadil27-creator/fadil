@@ -4,7 +4,7 @@ import type { ContentType } from "./types";
 
 export const LIMITS = {
   text: { minChars: 300, maxChars: 20000 },
-  image: { maxBytes: 10 * 1024 * 1024, mime: ["image/jpeg", "image/png", "image/webp", "image/heic"] },
+  image: { maxBytes: 4 * 1024 * 1024, mime: ["image/jpeg", "image/png", "image/webp", "image/heic"] },
   video: { maxBytes: 100 * 1024 * 1024, mime: ["video/mp4", "video/quicktime", "video/webm"] },
 } as const;
 

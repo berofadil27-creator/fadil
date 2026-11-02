@@ -34,7 +34,7 @@ export async function analyze(type: ContentType, input: string | File): Promise<
   if (res.ok) return (await res.json()) as AnalysisResult;
 
   if (res.status === 413)
-    throw new Error("Fichier trop lourd pour le serveur de test (environ 4 Mo maximum pour l'instant).");
+    throw new Error("Fichier trop lourd pour le serveur de test (4 Mo maximum).");
   let message = `Erreur du serveur (${res.status}).`;
   try {
     const data = await res.json();
