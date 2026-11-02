@@ -57,6 +57,10 @@ def analyze(data: bytes, filename: str = "image", reserved: bool = False) -> Vis
                        files={"media": (filename, data)})
         body = r.json()
         if r.status_code != 200 or body.get("status") != "success":
+            err = body.get("error", {}) if isinstance(body, dict) else {}
+            print(f"sightengine error http={r.status_code} type={err.get('type')} code={err.get('code')} msg={err.get('message')}")
+            if r.status_code == 429 or err.get("type") in ("usage_limit", "rate_limit"):
+                return VisualReport(status="quota")
             return VisualReport(status="error")
         score = float(body["type"]["ai_generated"])
     except Exception:  # noqa: BLE001
