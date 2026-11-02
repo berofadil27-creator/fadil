@@ -27,7 +27,7 @@ export default function Fiabilite() {
         </table>
         <p className="muted small">
           Ces erreurs sur des textes humains sont trop fréquentes pour une conclusion ferme. Un score élevé est donc
-          présenté comme « indice faible » et la conclusion reste « Indéterminé ». Les textes courts (emails), les
+          présenté comme « indice faible » et la conclusion reste « Indéterminé ». Les textes courts (emails), les
           textes retravaillés et ceux d&apos;IA récentes sont les plus difficiles. Un score bas ne prouve jamais
           qu&apos;un texte est humain.
         </p>
@@ -42,7 +42,7 @@ export default function Fiabilite() {
         <table className="rel-table">
           <tbody>
             <tr><th>Images IA repérées</th><td>28 sur 28</td></tr>
-            <tr><th>Photos réelles prises à tort pour de l&apos;IA</th><td>0 sur 26 (1 « Indéterminé »)</td></tr>
+            <tr><th>Photos réelles prises à tort pour de l&apos;IA</th><td>0 sur 26 (1 « Indéterminé »)</td></tr>
           </tbody>
         </table>
         <p className="muted small">
