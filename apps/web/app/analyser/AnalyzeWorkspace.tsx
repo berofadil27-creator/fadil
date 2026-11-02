@@ -5,6 +5,7 @@ import { CONTENT_LABELS } from "@/lib/types";
 import { LIMITS, formatBytes, validateFile, validateText } from "@/lib/validation";
 import { analyze } from "@/lib/api";
 import { extractFrames } from "@/lib/videoFrames";
+import { saveToHistory } from "@/lib/history";
 import ResultView from "@/components/ResultView";
 
 type Phase = "input" | "loading" | "result";
@@ -20,6 +21,7 @@ export default function AnalyzeWorkspace() {
   const [phase, setPhase] = useState<Phase>("input");
   const [steps, setSteps] = useState<Step[]>([]);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [saved, setSaved] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function switchTab(t: ContentType) {
@@ -50,6 +52,7 @@ export default function AnalyzeWorkspace() {
       }
       const r = await analyze(tab, input);
       setSteps((s) => s.map((x) => ({ ...x, done: true })));
+      setSaved(await saveToHistory(r).catch(() => false));
       setResult(r);
       setPhase("result");
     } catch (e) {
@@ -62,7 +65,15 @@ export default function AnalyzeWorkspace() {
     setPhase("input"); setResult(null); setText(""); setFile(null); setError(null);
   }
 
-  if (phase === "result" && result) return <ResultView result={result} onRestart={restart} />;
+  if (phase === "result" && result)
+    return (
+      <>
+        <ResultView result={result} onRestart={restart} />
+        <p className="muted small center">
+          {saved ? "Rapport enregistré dans votre historique." : "Rapport non conservé : connectez-vous pour garder un historique."}
+        </p>
+      </>
+    );
 
   if (phase === "loading")
     return (
@@ -118,7 +129,7 @@ export default function AnalyzeWorkspace() {
       {error && <p className="error" role="alert">{error}</p>}
 
       <button className="btn btn-primary full" onClick={start}>Lancer l&apos;analyse</button>
-      <p className="muted small center">Votre contenu est envoyé au serveur VEYRA pour vérification. Les fichiers ne sont pas conservés.</p>
+      <p className="muted small center">Votre contenu est envoyé au serveur VEYRA pour vérification. Les fichiers ne sont jamais conservés ; si vous êtes connecté, seul le rapport est gardé dans votre historique.</p>
     </section>
   );
 }
