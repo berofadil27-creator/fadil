@@ -93,3 +93,9 @@ Sans la mention « Publié le … » ajoutée par le modèle de page, deux reste
 - Notation en local avec le code et le modèle de production, sans appel au service en ligne (clé non récupérable).
 
 Scripts et résultats : hors dépôt (eval/fetch_human2.py, ws_prose.py, gen_ai2_llama.py, score2.py, analyze2.py, robust2.py ; text_eval2.json, text_eval2_metrics.json, robust2.json).
+
+## 8.4 Mobile et performance (2026-11-02)
+- Chromium headless en mode mobile, 360×740 et 390×844, 6 pages (accueil, analyser, fiabilité, historique, compte, tarifs) : aucun débordement horizontal.
+- Correctifs : bouton menu agrandi à 44 px (cible tactile), espacement des cartes de la page Fiabilité.
+- Vitesse simulée (4G lente 1,6 Mbit/s, latence 150 ms, processeur ×4) : premier affichage 1,4 à 1,9 s, plus grand élément 1,4 à 2,1 s (bon seuil : 2,5 s). Poids : 203 à 270 Ko, dont 138 à 206 Ko de JavaScript.
+- Limites : aucun test sur un vrai téléphone, ni sur Safari iOS ; temps d'analyse (API, modèle texte en veille) non mesurés ici. PageSpeed Insights indisponible (API Google non activée).
