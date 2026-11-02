@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import type { AnalysisResult, ContentType } from "@/lib/types";
 import { CONTENT_LABELS } from "@/lib/types";
 import { LIMITS, formatBytes, validateFile, validateText } from "@/lib/validation";
-import { buildDemoResult } from "@/lib/demo";
+import { analyze } from "@/lib/api";
 import ResultView from "@/components/ResultView";
 
 type Phase = "input" | "loading" | "result";
@@ -35,16 +35,21 @@ export default function AnalyzeWorkspace() {
     const err = tab === "text" ? validateText(text) : file ? validateFile(tab, file) : "Choisissez un fichier.";
     if (err) { setError(err); return; }
 
-    // Étapes réellement effectuées — jamais de fausse progression (cahier des charges, page 3).
+    // Étapes réellement effectuées — jamais de fausse progression (cahier des charges).
     setPhase("loading");
     setSteps([
       { label: tab === "text" ? "Vérification de la longueur du texte" : "Vérification du format et de la taille", done: true },
-      { label: "Préparation du rapport de démonstration (aucun moteur connecté)", done: false },
+      { label: "Envoi au serveur VEYRA et vérification", done: false },
     ]);
-    await new Promise((r) => setTimeout(r, 600));
-    setSteps((s) => s.map((x) => ({ ...x, done: true })));
-    setResult(buildDemoResult(tab));
-    setPhase("result");
+    try {
+      const r = await analyze(tab, tab === "text" ? text : (file as File));
+      setSteps((s) => s.map((x) => ({ ...x, done: true })));
+      setResult(r);
+      setPhase("result");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Une erreur est survenue.");
+      setPhase("input");
+    }
   }
 
   function restart() {
@@ -107,7 +112,7 @@ export default function AnalyzeWorkspace() {
       {error && <p className="error" role="alert">{error}</p>}
 
       <button className="btn btn-primary full" onClick={start}>Lancer l&apos;analyse</button>
-      <p className="muted small center">Vos fichiers ne sont envoyés nulle part dans ce prototype : tout reste dans votre navigateur.</p>
+      <p className="muted small center">Votre contenu est envoyé au serveur VEYRA pour vérification. Les fichiers ne sont pas conservés.</p>
     </section>
   );
 }

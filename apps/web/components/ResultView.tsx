@@ -7,7 +7,7 @@ export default function ResultView({ result, onRestart }: { result: AnalysisResu
   const date = new Date(result.created_at).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
   return (
     <section className="card result">
-      {result.is_demo && <span className="tag tag-demo">Résultat de démonstration</span>}
+      {!result.detection_available && <span className="tag tag-demo">Détection pas encore active</span>}
       <p className="muted small">
         {CONTENT_LABELS[result.content_type]} · {date}
       </p>

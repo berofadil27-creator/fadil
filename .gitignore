@@ -8,3 +8,8 @@ __pycache__/
 .venv/
 *.pyc
 .DS_Store
+
+.vercel/
+__pycache__/
+.pytest_cache/
+.venv/

@@ -21,8 +21,9 @@ export interface AnalysisResult {
   indicators: Indicator[];
   limitations: string[];
   created_at: string;
-  /** true tant que le moteur d'analyse réel n'est pas branché (Phase 2). */
-  is_demo: boolean;
+  /** false tant qu'aucun module de détection réel n'est actif pour ce type de contenu. */
+  detection_available: boolean;
+  engine_version: string;
 }
 
 export const CONCLUSION_LABELS: Record<Conclusion, string> = {
