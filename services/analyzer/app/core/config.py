@@ -13,7 +13,7 @@ def _int(name: str, default: int) -> int:
 
 APP_NAME = "VEYRA Analyzer"
 VERSION = "0.1.0"
-PHASE = "phase-4.1"
+PHASE = "phase-4.2"
 
 TEXT_MIN_CHARS = _int("VEYRA_TEXT_MIN_CHARS", 300)
 TEXT_MAX_CHARS = _int("VEYRA_TEXT_MAX_CHARS", 20_000)

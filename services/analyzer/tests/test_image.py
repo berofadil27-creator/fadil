@@ -100,3 +100,49 @@ def test_remote_manifest_not_fetched():
     d = _post((FX / "cloud.jpg").read_bytes())
     assert "pas été vérifiées" in _ind(d, "content_provenance")["explanation"]
     assert d["conclusion"] == "inconclusive"
+
+
+# --- Modèle visuel (simulé : aucun appel réseau dans les tests) ---
+from app.services import visual_model_service as vms
+
+
+def _fake(monkeypatch, report):
+    monkeypatch.setattr(vms, "analyze", lambda data, filename="image": report)
+
+
+def test_model_high_gives_likely_ai(monkeypatch):
+    _fake(monkeypatch, vms.VisualReport(status="ok", level="high", score=0.97))
+    d = _post(_png(), "x.png")
+    assert d["conclusion"] == "likely_ai" and d["confidence"] is None
+    assert "0.97" not in str(d)
+
+
+def test_model_low_gives_likely_human(monkeypatch):
+    _fake(monkeypatch, vms.VisualReport(status="ok", level="low", score=0.02))
+    assert _post(_png(), "x.png")["conclusion"] == "likely_human"
+
+
+def test_model_uncertain_is_inconclusive(monkeypatch):
+    _fake(monkeypatch, vms.VisualReport(status="ok", level="uncertain", score=0.5))
+    assert _post(_png(), "x.png")["conclusion"] == "inconclusive"
+
+
+def test_declared_ai_beats_model_low(monkeypatch):
+    _fake(monkeypatch, vms.VisualReport(status="ok", level="low", score=0.02))
+    d = _post((FX / "ai_c2pa.jpg").read_bytes())
+    assert d["conclusion"] == "likely_ai"
+    assert any("divergent" in l for l in d["limitations"])
+
+
+def test_model_error_is_reported(monkeypatch):
+    _fake(monkeypatch, vms.VisualReport(status="error"))
+    d = _post(_png(), "x.png")
+    assert d["conclusion"] == "inconclusive"
+    assert "n'a pas répondu" in _ind(d, "visual_traces")["explanation"]
+
+
+def test_unconfigured_is_not_performed(monkeypatch):
+    monkeypatch.delenv("SIGHTENGINE_API_USER", raising=False)
+    monkeypatch.delenv("SIGHTENGINE_API_SECRET", raising=False)
+    d = _post(_png(), "x.png")
+    assert _ind(d, "visual_traces")["status"] == "not_performed"

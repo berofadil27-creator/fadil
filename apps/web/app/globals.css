@@ -104,6 +104,7 @@ textarea:focus { outline: 2px solid var(--blue); border-color: transparent; }
 .p-found { background: rgba(37, 201, 154, 0.15); color: var(--green); }
 .p-not_found { background: rgba(100, 124, 255, 0.15); color: var(--blue); }
 .p-not_performed { background: rgba(184, 191, 207, 0.12); color: var(--text-2); }
+.p-uncertain { background: rgba(240, 180, 60, 0.15); color: #f0b43c; }
 .limits li { color: var(--text-2); font-size: 0.92rem; padding-left: 16px; position: relative; }
 .limits li::before { content: "•"; position: absolute; left: 0; color: var(--warn); }
 .result .btn { margin-top: 22px; }

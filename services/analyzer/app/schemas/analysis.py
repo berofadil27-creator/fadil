@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 ContentType = Literal["text", "image", "video"]
 Conclusion = Literal["likely_ai", "likely_human", "inconclusive"]
-IndicatorStatus = Literal["found", "not_found", "not_performed"]
+IndicatorStatus = Literal["found", "not_found", "uncertain", "not_performed"]
 AnalysisStatus = Literal["pending", "processing", "completed", "failed"]
 
 

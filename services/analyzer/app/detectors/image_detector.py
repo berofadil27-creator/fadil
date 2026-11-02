@@ -1,18 +1,18 @@
 """Module photo (cahier, section 6.3).
 
-Phase 4 (étape 1) : métadonnées + provenance C2PA. Le modèle d'analyse visuelle viendra ensuite.
+Phase 4 : métadonnées + provenance C2PA + analyse visuelle par un modèle spécialisé.
 
 Règles de conclusion (prudentes) :
-- « likely_ai » seulement si le fichier DÉCLARE lui-même une création par IA
-  (manifeste C2PA à signature intacte, métadonnées XMP IPTC, nom d'un outil de génération
-  ou paramètres de génération dans les métadonnées) ;
-- « likely_human » seulement si un manifeste C2PA d'un émetteur de confiance déclare
-  une capture par appareil photo, sans aucune déclaration IA ;
+- « likely_ai » si le fichier DÉCLARE une création par IA (C2PA intact, XMP IPTC, outil ou
+  paramètres de génération), ou si le modèle visuel détecte un niveau élevé de traces IA
+  sans déclaration contraire de confiance ;
+- « likely_human » si un manifeste C2PA de confiance déclare une capture, ou si le modèle
+  visuel ne détecte quasiment aucune trace IA, et qu'aucun autre indice ne dit le contraire ;
 - sinon « inconclusive ». Une absence d'indice n'est jamais une preuve.
 """
 from app.detectors.base import DetectorOutput, not_performed
 from app.schemas.analysis import Indicator
-from app.services import metadata_service, provenance_service
+from app.services import metadata_service, provenance_service, visual_model_service
 
 
 def _metadata_indicator(meta: metadata_service.MetadataReport) -> Indicator:
@@ -72,34 +72,69 @@ def _provenance_indicator(prov: provenance_service.ProvenanceReport) -> Indicato
         f"Informations de provenance C2PA intactes, {who} ({trust}){extra}."))
 
 
+def _visual_indicator(vis: visual_model_service.VisualReport) -> Indicator:
+    if vis.status == "unconfigured":
+        return not_performed("visual_traces", "Analyse visuelle par un modèle spécialisé", "Phase 4")
+    if vis.status in ("quota", "error"):
+        reason = ("le quota quotidien du prototype est atteint" if vis.status == "quota"
+                  else "le service d'analyse n'a pas répondu")
+        return Indicator(name="visual_traces", status="not_performed",
+                         explanation=f"Analyse visuelle non effectuée : {reason}. Réessayez plus tard.")
+    texts = {
+        "high": "Le modèle d'analyse visuelle relève de nombreuses caractéristiques typiques des images "
+                "générées ou retouchées par IA.",
+        "low": "Le modèle d'analyse visuelle ne relève quasiment aucune caractéristique typique des images IA.",
+        "uncertain": "Le modèle d'analyse visuelle ne permet pas de trancher : les caractéristiques observées "
+                     "sont ambiguës.",
+    }
+    status = "found" if vis.level == "high" else "not_found" if vis.level == "low" else "uncertain"
+    return Indicator(name="visual_traces", status=status, explanation=texts[vis.level] + (
+        " Ce modèle (Sightengine) analyse uniquement les pixels ; il peut se tromper, notamment sur "
+        "les images très compressées, les captures d'écran ou les générateurs récents."))
+
+
 def analyze(data: bytes, mime: str) -> DetectorOutput:
     meta = metadata_service.read(data)
     prov = provenance_service.check(data, mime)
+    vis = visual_model_service.analyze(data)
 
-    indicators = [
-        _metadata_indicator(meta),
-        _provenance_indicator(prov),
-        not_performed("visual_traces", "Analyse visuelle par un modèle spécialisé", "Phase 4, étape 2"),
-    ]
+    indicators = [_metadata_indicator(meta), _provenance_indicator(prov), _visual_indicator(vis)]
 
     signed = prov.status in ("valid", "trusted")
     ai_declared = (signed and bool(prov.ai_declarations)) or bool(
         meta.ai_tools or meta.generation_params or meta.xmp_ai_declared)
     capture_trusted = prov.status == "trusted" and bool(prov.capture_declarations)
+    model_high = vis.status == "ok" and vis.level == "high"
+    model_low = vis.status == "ok" and vis.level == "low"
 
     limitations = []
     if ai_declared:
         conclusion = "likely_ai"
-        limitations.append("Cette conclusion repose sur ce que le fichier déclare lui-même. "
-                           "Ces informations peuvent avoir été ajoutées ou modifiées.")
+        limitations.append("Le fichier déclare lui-même une création par IA. Ces informations peuvent "
+                           "avoir été ajoutées ou modifiées.")
+        if model_low:
+            limitations.append("Le modèle visuel, lui, ne relève pas de traces IA : les indices divergent.")
+    elif capture_trusted and model_high:
+        conclusion = "inconclusive"
+        limitations.append("Les indices se contredisent : une capture par appareil photo est déclarée et "
+                           "signée, mais le modèle visuel relève des traces typiques de l'IA.")
     elif capture_trusted:
         conclusion = "likely_human"
-        limitations.append("Une capture par appareil photo est déclarée et signée, mais l'image a pu "
-                           "être retouchée avant la signature.")
+        limitations.append("Une capture par appareil photo est déclarée et signée par un émetteur de "
+                           "confiance, mais l'image a pu être retouchée avant la signature.")
+    elif model_high:
+        conclusion = "likely_ai"
+        limitations.append("Cette conclusion repose sur un modèle statistique : une vraie photo peut être "
+                           "classée à tort, en particulier si elle a été fortement retouchée.")
+    elif model_low:
+        conclusion = "likely_human"
+        limitations.append("Cette conclusion repose sur un modèle statistique : une image IA récente ou "
+                           "retravaillée peut ne pas être détectée.")
     else:
         conclusion = "inconclusive"
-        limitations.append("Aucune déclaration exploitable n'a été trouvée dans le fichier. "
-                           "L'analyse visuelle par un modèle n'est pas encore active.")
-    limitations.append("Une image générée par IA peut ne contenir aucune trace dans ses métadonnées.")
+        limitations.append("Les éléments disponibles ne permettent pas de conclure.")
+    if vis.status == "ok":
+        limitations.append("Aucun score n'est affiché : sa signification n'a pas encore été validée par "
+                           "nos propres tests.")
     return DetectorOutput(indicators=indicators, conclusion=conclusion,
                           limitations=limitations, detection_available=True)

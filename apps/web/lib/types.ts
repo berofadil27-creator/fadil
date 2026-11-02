@@ -3,7 +3,7 @@ export type ContentType = "text" | "image" | "video";
 
 export type Conclusion = "likely_ai" | "likely_human" | "inconclusive";
 
-export type IndicatorStatus = "found" | "not_found" | "not_performed";
+export type IndicatorStatus = "found" | "not_found" | "uncertain" | "not_performed";
 
 export interface Indicator {
   name: string;

@@ -1,7 +1,7 @@
 import type { AnalysisResult } from "@/lib/types";
 import { CONCLUSION_LABELS, CONTENT_LABELS } from "@/lib/types";
 
-const STATUS_LABEL = { found: "Trouvé", not_found: "Absent", not_performed: "Non effectué" } as const;
+const STATUS_LABEL = { found: "Trouvé", not_found: "Absent", uncertain: "Incertain", not_performed: "Non effectué" } as const;
 
 export default function ResultView({ result, onRestart }: { result: AnalysisResult; onRestart: () => void }) {
   const date = new Date(result.created_at).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" });
