@@ -13,12 +13,16 @@ def _int(name: str, default: int) -> int:
 
 APP_NAME = "VEYRA Analyzer"
 VERSION = "0.1.0"
-PHASE = "phase-5.1"
+PHASE = "phase-6.1"
 
 TEXT_MIN_CHARS = _int("VEYRA_TEXT_MIN_CHARS", 300)
 TEXT_MAX_CHARS = _int("VEYRA_TEXT_MAX_CHARS", 20_000)
 IMAGE_MAX_BYTES = _int("VEYRA_IMAGE_MAX_BYTES", 4 * 1024 * 1024)  # Vercel refuse les requêtes > ~4,5 Mo
-VIDEO_MAX_BYTES = _int("VEYRA_VIDEO_MAX_BYTES", 100 * 1024 * 1024)
+VIDEO_MAX_BYTES = _int("VEYRA_VIDEO_MAX_BYTES", 100 * 1024 * 1024)  # vérifiée dans le navigateur
+# Vidéo : le navigateur envoie seulement quelques images JPEG (jamais le fichier).
+VIDEO_FRAMES_MIN = 3
+VIDEO_FRAMES_MAX = _int("VEYRA_VIDEO_FRAMES_MAX", 6)
+FRAME_MAX_BYTES = 600 * 1024
 
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
 VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/webm"}

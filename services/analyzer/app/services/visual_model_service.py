@@ -29,22 +29,27 @@ class VisualReport:
     score: float | None = None  # gardé côté serveur, jamais affiché tel quel
 
 
-def _take_quota() -> bool:
+def configured() -> bool:
+    return bool(os.getenv("SIGHTENGINE_API_USER") and os.getenv("SIGHTENGINE_API_SECRET"))
+
+
+def take_quota(n: int = 1) -> bool:
+    """Réserve n images sur le plafond quotidien (tout ou rien)."""
     today = time.strftime("%Y-%m-%d", time.gmtime())
     with _lock:
         if _day["date"] != today:
             _day.update(date=today, count=0)
-        if _day["count"] >= DAILY_CAP:
+        if _day["count"] + n > DAILY_CAP:
             return False
-        _day["count"] += 1
+        _day["count"] += n
         return True
 
 
-def analyze(data: bytes, filename: str = "image") -> VisualReport:
+def analyze(data: bytes, filename: str = "image", reserved: bool = False) -> VisualReport:
     user, secret = os.getenv("SIGHTENGINE_API_USER"), os.getenv("SIGHTENGINE_API_SECRET")
     if not user or not secret:
         return VisualReport(status="unconfigured")
-    if not _take_quota():
+    if not reserved and not take_quota():
         return VisualReport(status="quota")
     try:
         r = httpx.post(API_URL, timeout=20.0,

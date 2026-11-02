@@ -69,9 +69,31 @@ def test_video_given_as_image_rejected():
     assert r.status_code == 415
 
 
-def test_video_ok():
+def _frames(n, data=JPEG):
+    return [("frames", (f"f{i}.jpg", data, "image/jpeg")) for i in range(n)]
+
+
+def test_video_frames_ok_unconfigured(monkeypatch):
+    monkeypatch.delenv("SIGHTENGINE_API_USER", raising=False)
+    r = client.post("/api/analyze/video", files=_frames(6),
+                    data={"timestamps": "1,2,3,4,5,6", "duration": "6"}, headers=H)
+    d = r.json()
+    assert r.status_code == 200 and d["conclusion"] == "inconclusive" and d["detection_available"] is False
+
+
+def test_video_too_few_frames():
+    r = client.post("/api/analyze/video", files=_frames(2), data={"timestamps": "1,2"}, headers=H)
+    assert r.status_code == 422
+
+
+def test_video_frames_must_be_jpeg():
+    r = client.post("/api/analyze/video", files=_frames(3, PNG), data={"timestamps": "1,2,3"}, headers=H)
+    assert r.status_code == 415
+
+
+def test_video_raw_file_rejected():
     r = client.post("/api/analyze/video", files={"file": ("v.mp4", MP4)}, headers=H)
-    assert r.status_code == 200 and len(r.json()["indicators"]) == 4
+    assert r.status_code == 422
 
 
 def test_empty_file():

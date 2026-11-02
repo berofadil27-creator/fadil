@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from app.core import config
 from app.core.errors import VeyraError
 from app.detectors import image_detector, text_detector, video_detector
@@ -31,9 +31,22 @@ async def analyze_image(file: UploadFile = File(...), cid: str = Depends(client_
     return orchestrator.run(cid, "image", lambda: image_detector.analyze(data, mime))
 
 
-@router.post("/video", response_model=AnalysisResult, summary="Analyser une vidéo")
-async def analyze_video(file: UploadFile = File(...), cid: str = Depends(client_id)):
-    data = await _read(file, config.VIDEO_MAX_BYTES)
-    mime = file_validation.validate_file(data, "video")
+@router.post("/video", response_model=AnalysisResult,
+             summary="Analyser une vidéo (images extraites par le navigateur)")
+async def analyze_video(frames: list[UploadFile] = File(...), timestamps: str = Form(...),
+                        duration: float | None = Form(None), cid: str = Depends(client_id)):
+    if not config.VIDEO_FRAMES_MIN <= len(frames) <= config.VIDEO_FRAMES_MAX:
+        raise VeyraError(422, "bad_frames",
+                         f"Il faut entre {config.VIDEO_FRAMES_MIN} et {config.VIDEO_FRAMES_MAX} images extraites.")
+    data = [await _read(f, config.FRAME_MAX_BYTES) for f in frames]
+    for d in data:
+        if file_validation.sniff_type(d) != "image/jpeg":
+            raise VeyraError(415, "unsupported_format", "Les images extraites doivent être au format JPEG.")
+    try:
+        ts = [float(x) for x in timestamps.split(",")]
+    except ValueError:
+        raise VeyraError(422, "bad_frames", "Horodatages des images invalides.")
+    if len(ts) != len(data):
+        raise VeyraError(422, "bad_frames", "Chaque image doit avoir un horodatage.")
     rate_limit.check(cid)
-    return orchestrator.run(cid, "video", lambda: video_detector.analyze(data, mime))
+    return orchestrator.run(cid, "video", lambda: video_detector.analyze(data, ts, duration))

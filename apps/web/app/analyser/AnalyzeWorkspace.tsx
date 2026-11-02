@@ -4,6 +4,7 @@ import type { AnalysisResult, ContentType } from "@/lib/types";
 import { CONTENT_LABELS } from "@/lib/types";
 import { LIMITS, formatBytes, validateFile, validateText } from "@/lib/validation";
 import { analyze } from "@/lib/api";
+import { extractFrames } from "@/lib/videoFrames";
 import ResultView from "@/components/ResultView";
 
 type Phase = "input" | "loading" | "result";
@@ -37,12 +38,17 @@ export default function AnalyzeWorkspace() {
 
     // Étapes réellement effectuées — jamais de fausse progression (cahier des charges).
     setPhase("loading");
-    setSteps([
-      { label: tab === "text" ? "Vérification de la longueur du texte" : "Vérification du format et de la taille", done: true },
-      { label: "Envoi au serveur VEYRA et vérification", done: false },
-    ]);
+    const first = { label: tab === "text" ? "Vérification de la longueur du texte" : "Vérification du format et de la taille", done: true };
+    const send = { label: tab === "video" ? "Envoi des images au serveur VEYRA et analyse" : "Envoi au serveur VEYRA et vérification", done: false };
+    const extract = { label: "Extraction de 6 images dans votre navigateur", done: false };
+    setSteps(tab === "video" ? [first, extract, send] : [first, send]);
     try {
-      const r = await analyze(tab, tab === "text" ? text : (file as File));
+      let input: Parameters<typeof analyze>[1] = tab === "text" ? text : (file as File);
+      if (tab === "video") {
+        input = await extractFrames(file as File, 6);
+        setSteps([first, { ...extract, done: true }, send]);
+      }
+      const r = await analyze(tab, input);
       setSteps((s) => s.map((x) => ({ ...x, done: true })));
       setResult(r);
       setPhase("result");
@@ -104,7 +110,7 @@ export default function AnalyzeWorkspace() {
             </span>
           </label>
           {tab === "video" && (
-            <p className="muted small">L&apos;analyse vidéo arrivera après les analyses photo et texte (Phase 6).</p>
+            <p className="muted small">La vidéo reste sur votre appareil : seules 6 images extraites sont envoyées et analysées. Le son n&apos;est pas analysé.</p>
           )}
         </>
       )}

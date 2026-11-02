@@ -13,10 +13,19 @@ function clientId(): string {
   return id;
 }
 
-export async function analyze(type: ContentType, input: string | File): Promise<AnalysisResult> {
+import type { ExtractedFrames } from "./videoFrames";
+
+export async function analyze(type: ContentType, input: string | File | ExtractedFrames): Promise<AnalysisResult> {
   const headers: Record<string, string> = { "X-Client-Id": clientId() };
   let body: BodyInit;
-  if (type === "text") {
+  if (type === "video") {
+    const v = input as ExtractedFrames;
+    const form = new FormData();
+    v.frames.forEach((f, i) => form.append("frames", f, `frame-${i}.jpg`));
+    form.append("timestamps", v.timestamps.join(","));
+    form.append("duration", String(v.duration));
+    body = form;
+  } else if (type === "text") {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify({ text: input as string });
   } else {
