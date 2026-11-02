@@ -42,7 +42,8 @@ export default function Home() {
             jamais des preuves : un texte humain peut être classé à tort, et un contenu IA peut passer inaperçu.
           </p>
           <ul className="checks">
-            <li>Trois conclusions possibles : indices IA, indices humains ou réels, ou indéterminé.</li>
+            <li>Trois conclusions possibles : indices IA, indices humains ou réels, ou indéterminé. Pour le texte, jamais de conclusion ferme.</li>
+            <li><Link href="/fiabilite">Voir nos tests et leurs limites</Link></li>
             <li>Chaque résultat explique ce qui a été vérifié, et ce qui ne l&apos;a pas été.</li>
             <li>L&apos;absence de signature de provenance ne signifie pas qu&apos;un contenu est artificiel.</li>
           </ul>

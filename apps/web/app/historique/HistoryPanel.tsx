@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { currentUserId, deleteFromHistory, listHistory, type HistoryRow } from "@/lib/history";
-import { CONCLUSION_LABELS, CONTENT_LABELS } from "@/lib/types";
+import { CONTENT_LABELS, conclusionClass, conclusionLabel } from "@/lib/types";
 import ResultView from "@/components/ResultView";
 
 export default function HistoryPanel() {
@@ -64,7 +64,7 @@ export default function HistoryPanel() {
                 <span className="muted small">
                   {CONTENT_LABELS[r.content_type]} · {new Date(r.created_at).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
                 </span>
-                <strong className={`c-${r.conclusion}`}>{CONCLUSION_LABELS[r.conclusion]}</strong>
+                <strong className={conclusionClass(r.result)}>{conclusionLabel(r.result)}</strong>
               </button>
               <button className="history-del" aria-label="Supprimer" onClick={() => remove(r.id)}>Supprimer</button>
             </li>

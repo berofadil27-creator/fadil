@@ -37,3 +37,18 @@ export const CONTENT_LABELS: Record<ContentType, string> = {
   image: "Photo",
   video: "Vidéo",
 };
+
+/** Étape 8.3 : le texte ne donne jamais de conclusion ferme, seulement un « indice faible ». */
+export function isWeakTextSignal(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): boolean {
+  if (r.content_type !== "text") return false;
+  if (r.conclusion === "likely_ai") return true; // anciens rapports, avant 8.3
+  return r.conclusion === "inconclusive" && r.indicators?.some((i) => i.name === "statistical_signals" && i.status === "found");
+}
+
+export function conclusionLabel(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): string {
+  return isWeakTextSignal(r) ? "Indéterminé — indice faible d’écriture IA" : CONCLUSION_LABELS[r.conclusion];
+}
+
+export function conclusionClass(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): string {
+  return isWeakTextSignal(r) ? "c-weak" : `c-${r.conclusion}`;
+}

@@ -15,11 +15,12 @@ def test_unconfigured_is_honest(monkeypatch):
     assert out.indicators[0].status == "not_performed"
 
 
-def test_high_gives_likely_ai(monkeypatch):
+def test_high_is_only_weak_signal(monkeypatch):
     monkeypatch.setattr(tms, "analyze", _fake("high"))
     out = text_detector.analyze(T)
-    assert out.conclusion == "likely_ai" and out.detection_available
+    assert out.conclusion == "inconclusive" and out.detection_available
     assert out.indicators[0].status == "found"
+    assert out.indicators[0].explanation.startswith("Indice faible")
 
 
 def test_low_never_likely_human(monkeypatch):

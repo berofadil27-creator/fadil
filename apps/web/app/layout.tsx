@@ -20,7 +20,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <footer className="footer">
           <div className="container">
             <span>© 2026 VEYRA · Discover What&apos;s Real.</span>
-            <span className="muted">Prototype — aucune analyse n&apos;est encore réelle.</span>
+            <span className="muted">Prototype — des indices, jamais des preuves.</span>
           </div>
         </footer>
       </body>

@@ -43,3 +43,53 @@ Aucun faux positif, aucune image IA classée réelle. Le modèle visuel a repér
 
 Biais et limites : beaucoup d'images IA de Commons sont des illustrations peu réalistes (cas faciles) ; aucune photo réelle retouchée par IA ni image IA très récente et photoréaliste ; miniatures redimensionnées ; petit échantillon (54). Ces résultats ne prouvent pas une fiabilité générale. Coût : environ 270 opérations Sightengine.
 Scripts et résultats : hors dépôt (eval/photo_eval.py, photo_results.json).
+
+## 8.3 Évaluation texte (jeu élargi) (2026-11-02, 16:05)
+
+**Méthode de notation.** La clé `VEYRA_DETECTOR_KEY` est marquée « sensitive » sur Vercel (projets veyra-text et veyra-api) : `vercel env pull` ne renvoie qu'un espace réservé, l'appel au service en ligne était donc impossible. Les textes ont été notés en local avec le code exact du service (`services/text-detector/main.py`, fonction `detect`, même modèle `model_q8.onnx`, onnxruntime 1.31.1 et tokenizers 0.23.3 comme en production). Le résultat devrait être identique au service en ligne, mais cela n'a pas été vérifié par un appel réel. Règle appliquée : score ≥ 0,90 → `likely_ai`, sinon `inconclusive`.
+
+**Jeu humain (40 textes, 538 à 2 990 caractères, révisions antérieures au 31/12/2020).** Anciennes révisions MediaWiki (url `oldid`, numéro et date de révision conservés) : Wikinews (15 dépêches, 2009-2020, tirage aléatoire), Wikivoyage (10 guides de ville ou de région), Wikibooks (8 chapitres : informatique, biologie, musique, physique), Wikisource (7 extraits de prose publiés ou parus en 1950 ou après, dont Giono et Proust ; 2 sont des traductions de Jack London). Le balisage wiki a été retiré (seuls les paragraphes ont été gardés) et les textes coupés à environ 3 000 caractères. 7 textes juridiques Wikisource (lois, conventions), tirés en premier, ont été retirés du jeu principal parce que ce n'est pas de la prose. Ils sont notés à part.
+
+**Jeu IA (40 textes, 718 à 2 693 caractères).** Le routeur Hugging Face a refusé l'accès (403 : le jeton n'a pas la permission « Inference Providers »). Nous avons donc utilisé un repli gratuit : 3 modèles ouverts exécutés en local avec llama.cpp (GGUF Q4_K_M, température 0,7, 600 jetons au plus). Les modèles : Qwen2.5-3B-Instruct (14 textes), Llama-3.2-3B-Instruct (13), gemma-2-2b-it (13). Un 4e modèle, Mistral-7B, a été abandonné faute de mémoire. 40 consignes en français couvrent 8 genres (5 textes chacun) : article de presse, guide de voyage, tutoriel, tribune, courriel, dissertation ou rédaction, avis ou critique, récit. La mise en forme Markdown (titres, gras) a été retirée avant notation, pour reproduire un texte copié tel qu'il s'affiche.
+
+| Indicateur | Résultat |
+|---|---|
+| AUC (40 humains contre 40 IA) | 0,936 |
+| Faux positifs à 0,90 (humain classé `likely_ai`) | **3 / 40 (7,5 %)**, tous Wikinews |
+| Score humain maximal | 0,995 |
+| Détection IA à 0,90 | 34 / 40 (85 %) |
+| Détection IA à 0,50 | 36 / 40 (90 %) |
+| Humains ≥ 0,50 | 9 / 40 (7 Wikinews, 1 Wikivoyage, 1 Wikibooks) |
+
+| Modèle | n | ≥ 0,90 | ≥ 0,50 | Médiane | AUC contre humains |
+|---|---|---|---|---|---|
+| Qwen2.5-3B-Instruct | 14 | 13 | 14 | 0,994 | 0,968 |
+| Llama-3.2-3B-Instruct | 13 | 11 | 12 | 0,996 | 0,963 |
+| gemma-2-2b-it | 13 | 10 | 10 | 0,988 | 0,874 |
+
+| Source humaine | n | ≥ 0,90 | ≥ 0,50 | Moyenne | Max |
+|---|---|---|---|---|---|
+| Wikinews | 15 | 3 | 7 | 0,46 | 0,995 |
+| Wikivoyage | 10 | 0 | 1 | 0,08 | 0,76 |
+| Wikibooks | 8 | 0 | 1 | 0,13 | 0,87 |
+| Wikisource (prose) | 7 | 0 | 0 | 0,00 | 0,003 |
+| *Hors jeu : Wikisource juridique* | 7 | 1 | 3 | — | 0,98 |
+
+**Faux positifs (≥ 0,90).** Ce sont 3 dépêches Wikinews de 2009-2010 au style d'agence :
+- « Ukraine : Timochenko annonce sa candidature pour la présidentielle », 0,995 (oldid 510998)
+- « Hatoyama résolu à conclure un traité de paix avec la Russie », 0,968 (oldid 181209)
+- « Yémen : les États-Unis et la Grande-Bretagne ferment leurs ambassades », 0,965 (oldid 310139)
+
+Sans la mention « Publié le … » ajoutée par le modèle de page, deux restent au-dessus de 0,90 (0,984 et 0,980) et la troisième descend à 0,72. Hors jeu, la convention de La Haye sur la légalisation des actes publics (Wikisource) obtient aussi 0,98.
+
+**IA non détectées à 0,90 (6).** Surtout des courriels courts (3 sur 5 ratés, scores de 0,25 à 0,83) et des récits (2 ratés, scores de 0,03 et 0,74), plus une tribune gemma notée 0,001. Par genre, la détection à 0,90 est de 5 sur 5 pour presse, voyage, tutoriel, dissertation et avis, de 4 sur 5 pour la tribune, de 3 sur 5 pour le récit et de 2 sur 5 pour le courriel.
+
+**Conclusions.** Le seuil de 0,90 ne garantit pas l'absence de faux positif : la prose journalistique humaine factuelle, au style d'agence, est confondue avec l'IA. Un résultat `likely_ai` doit rester présenté comme un indice et non comme une preuve, en particulier sur des textes de presse ou administratifs. Ce jeu trouve plus de faux positifs que le premier test (0 sur le jeu initial), parce qu'il contient plus de dépêches.
+
+**Biais et limites.**
+- Petit échantillon (80 textes) : une erreur de plus ou de moins change les taux de 2,5 points.
+- Humains : uniquement des wikis communautaires. Le style Wikinews est souvent repris de dépêches d'agence, et Wikisource est surtout de la prose littéraire ancienne, très facile pour le détecteur. Il n'y a ni courriels, ni avis clients, ni copies d'élèves humains, alors que ce sont les genres où l'IA est le moins détectée.
+- IA : seulement de petits modèles (2 à 3 milliards de paramètres, quantifiés) et non les modèles commerciaux récents (GPT, Claude, Mistral Large). Les consignes sont simples et identiques d'un modèle à l'autre, il n'y a pas de réécriture humaine ni de paraphrase, et 10 textes sur 40 sont coupés à 600 jetons.
+- Notation en local avec le code et le modèle de production, sans appel au service en ligne (clé non récupérable).
+
+Scripts et résultats : hors dépôt (eval/fetch_human2.py, ws_prose.py, gen_ai2_llama.py, score2.py, analyze2.py, robust2.py ; text_eval2.json, text_eval2_metrics.json, robust2.json).
