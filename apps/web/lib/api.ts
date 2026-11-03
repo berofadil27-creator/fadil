@@ -14,16 +14,20 @@ function clientId(): string {
 }
 
 import type { ExtractedFrames } from "./videoFrames";
+import type { ClientProvenance } from "./videoProvenance";
 
-export async function analyze(type: ContentType, input: string | File | ExtractedFrames): Promise<AnalysisResult> {
+export type VideoInput = ExtractedFrames & { provenance?: ClientProvenance };
+
+export async function analyze(type: ContentType, input: string | File | VideoInput): Promise<AnalysisResult> {
   const headers: Record<string, string> = { "X-Client-Id": clientId() };
   let body: BodyInit;
   if (type === "video") {
-    const v = input as ExtractedFrames;
+    const v = input as VideoInput;
     const form = new FormData();
     v.frames.forEach((f, i) => form.append("frames", f, `frame-${i}.jpg`));
     form.append("timestamps", v.timestamps.join(","));
     form.append("duration", String(v.duration));
+    if (v.provenance) form.append("provenance", JSON.stringify(v.provenance));
     body = form;
   } else if (type === "text") {
     headers["Content-Type"] = "application/json";

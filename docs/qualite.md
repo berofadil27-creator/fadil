@@ -99,3 +99,10 @@ Scripts et résultats : hors dépôt (eval/fetch_human2.py, ws_prose.py, gen_ai2
 - Correctifs : bouton menu agrandi à 44 px (cible tactile), espacement des cartes de la page Fiabilité.
 - Vitesse simulée (4G lente 1,6 Mbit/s, latence 150 ms, processeur ×4) : premier affichage 1,4 à 1,9 s, plus grand élément 1,4 à 2,1 s (bon seuil : 2,5 s). Poids : 203 à 270 Ko, dont 138 à 206 Ko de JavaScript.
 - Limites : aucun test sur un vrai téléphone, ni sur Safari iOS ; temps d'analyse (API, modèle texte en veille) non mesurés ici. PageSpeed Insights indisponible (API Google non activée).
+
+## 8.5 Provenance C2PA des vidéos, lue dans le navigateur (2026-11-03)
+- Bibliothèque `@contentauth/c2pa-web` 0.15.5 (MIT), module WebAssembly de 9 Mo chargé uniquement lors d'une analyse vidéo. Aucun manifeste distant téléchargé. Délai maximal 20 s, sinon « non lu ».
+- Seul un résumé (état, émetteur, outil, types de source) part au serveur. Le serveur le valide strictement mais ne peut pas le revérifier ; le rapport l'indique.
+- Règles : déclaration IA signée et intacte → « likely_ai » (comme pour les photos) ; signature invalide ignorée ; une déclaration de capture ne prouve jamais l'origine humaine.
+- Test navigateur (Chromium, requête interceptée, aucun appel Sightengine) : vidéo signée de test → valid ; sans manifeste → absent ; vidéo signée « trainedAlgorithmicMedia » → valid + déclaration IA. Fichier altéré : illisible par le navigateur, cas « invalide » couvert par les tests serveur seulement.
+- 53 tests backend passent. Limites : vidéos de test seulement (aucune vraie vidéo IA signée, par ex. Sora) ; réseaux sociaux retirent souvent C2PA ; lecture lente sur téléphone (premier chargement du module).

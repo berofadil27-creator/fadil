@@ -13,3 +13,4 @@ __pycache__/
 __pycache__/
 .pytest_cache/
 .venv/
+apps/web/public/c2pa/

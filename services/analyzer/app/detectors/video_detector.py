@@ -12,12 +12,76 @@ Règles de conclusion (prudentes, seuils provisoires) :
 - sinon « inconclusive ».
 Le rapport dit toujours combien d'images ont été examinées : jamais « toute la vidéo ».
 """
+import json
 import math
 from concurrent.futures import ThreadPoolExecutor
 
 from app.detectors.base import DetectorOutput
 from app.schemas.analysis import Indicator
 from app.services import visual_model_service as vms
+from app.services.provenance_service import AI_SOURCE_TYPES, CAPTURE_SOURCE_TYPES, ProvenanceReport
+
+_CLIENT_STATUSES = {"absent", "invalid", "valid", "trusted", "error"}
+
+
+def parse_client_provenance(raw: str | None) -> ProvenanceReport | None:
+    """Résumé C2PA lu par le navigateur (étape 8.5). Non vérifiable par le serveur : il est
+    validé strictement, et tout ce qui est mal formé est ignoré."""
+    if not raw or len(raw) > 4000:
+        return None
+    try:
+        d = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(d, dict) or d.get("status") not in _CLIENT_STATUSES:
+        return None
+
+    def _s(v):
+        return v.strip()[:200] or None if isinstance(v, str) else None
+
+    types = [t for t in d.get("source_types") or [] if isinstance(t, str)][:10]
+    return ProvenanceReport(
+        status=d["status"], issuer=_s(d.get("issuer")), generator=_s(d.get("generator")),
+        ai_declarations=sorted({AI_SOURCE_TYPES[t] for t in types if t in AI_SOURCE_TYPES}),
+        capture_declarations=sorted({CAPTURE_SOURCE_TYPES[t] for t in types if t in CAPTURE_SOURCE_TYPES}),
+    )
+
+
+_BY_DEVICE = " Lu par votre appareil : la vidéo n'est pas envoyée, le serveur ne peut donc pas le revérifier."
+
+
+def _provenance_indicator(prov: ProvenanceReport | None) -> Indicator:
+    if prov is None:
+        return Indicator(name="content_provenance", status="not_performed", explanation=(
+            "Métadonnées et provenance C2PA non vérifiées : seule une sélection d'images est envoyée au "
+            "serveur, pas le fichier vidéo lui-même."))
+    if prov.status == "absent":
+        return Indicator(name="content_provenance", status="not_found", explanation=(
+            "Aucune information de provenance C2PA (Content Credentials) dans le fichier. La plupart des "
+            "vidéos n'en ont pas, et les réseaux sociaux les retirent souvent : leur absence ne signifie "
+            "pas que la vidéo est artificielle." + _BY_DEVICE))
+    if prov.status == "error":
+        return Indicator(name="content_provenance", status="not_performed", explanation=(
+            "La provenance C2PA n'a pas pu être lue sur cet appareil (format non pris en charge, "
+            "fichier trop lourd ou délai dépassé)."))
+    if prov.status == "invalid":
+        return Indicator(name="content_provenance", status="found", explanation=(
+            "Des informations de provenance C2PA sont présentes, mais leur vérification échoue : le fichier "
+            "a probablement été modifié après la signature. Elles ne peuvent pas être prises en compte."
+            + _BY_DEVICE))
+    who = f"signées par « {prov.issuer} »" if prov.issuer else "signées"
+    trust = ("émetteur reconnu par une liste de confiance" if prov.status == "trusted"
+             else "émetteur non vérifié auprès d'une liste de confiance")
+    decl = []
+    if prov.ai_declarations:
+        decl.append("contenu déclaré " + " et ".join(prov.ai_declarations))
+    if prov.capture_declarations:
+        decl.append("contenu déclaré " + " et ".join(prov.capture_declarations))
+    if prov.generator:
+        decl.append(f"outil de création : {prov.generator}")
+    extra = (" — " + " ; ".join(decl)) if decl else ""
+    return Indicator(name="content_provenance", status="found", explanation=(
+        f"Informations de provenance C2PA intactes, {who} ({trust}){extra}." + _BY_DEVICE))
 
 
 def _fmt_time(t: float) -> str:
@@ -25,21 +89,29 @@ def _fmt_time(t: float) -> str:
     return f"{t // 60}:{t % 60:02d}"
 
 
-def analyze(frames: list[bytes], timestamps: list[float], duration: float | None) -> DetectorOutput:
+def _no_frames(kf: Indicator, prov_ind: Indicator, ai_declared: bool) -> DetectorOutput:
+    if ai_declared:
+        return DetectorOutput(indicators=[kf, prov_ind], conclusion="likely_ai", detection_available=True,
+                              limitations=["Seule la déclaration C2PA du fichier (lue par votre appareil) a été "
+                                           "prise en compte : les images n'ont pas été analysées. Ces informations "
+                                           "peuvent avoir été ajoutées ou modifiées."])
+    return DetectorOutput(indicators=[kf, prov_ind], limitations=[
+        "Aucune analyse vidéo n'a pu être effectuée : aucune conclusion n'est possible."])
+
+
+def analyze(frames: list[bytes], timestamps: list[float], duration: float | None,
+            provenance: ProvenanceReport | None = None) -> DetectorOutput:
     n = len(frames)
-    not_sent = Indicator(name="content_provenance", status="not_performed", explanation=(
-        "Métadonnées et provenance C2PA non vérifiées : seule une sélection d'images est envoyée au "
-        "serveur, pas le fichier vidéo lui-même."))
+    not_sent = _provenance_indicator(provenance)
+    ai_declared = bool(provenance and provenance.status in ("valid", "trusted") and provenance.ai_declarations)
     if not vms.configured():
         kf = Indicator(name="keyframes", status="not_performed",
                        explanation="Analyse des images non disponible : le modèle visuel n'est pas configuré.")
-        return DetectorOutput(indicators=[kf, not_sent], limitations=[
-            "Aucune analyse vidéo n'a pu être effectuée : aucune conclusion n'est possible."])
+        return _no_frames(kf, not_sent, ai_declared)
     if not vms.take_quota(n):
         kf = Indicator(name="keyframes", status="not_performed", explanation=(
             "Analyse des images non effectuée : le quota quotidien du prototype est atteint. Réessayez demain."))
-        return DetectorOutput(indicators=[kf, not_sent], limitations=[
-            "Aucune analyse vidéo n'a pu être effectuée : aucune conclusion n'est possible."])
+        return _no_frames(kf, not_sent, ai_declared)
 
     with ThreadPoolExecutor(max_workers=min(n, 6)) as pool:
         reports = list(pool.map(lambda f: vms.analyze(f, "frame.jpg", reserved=True), frames))
@@ -81,7 +153,13 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
             "image sont comparés, pas le mouvement."))
 
     limitations = []
-    if k < 3:
+    if ai_declared:
+        conclusion = "likely_ai"
+        limitations.append("Le fichier vidéo déclare lui-même une création par IA (C2PA, lu par votre appareil). "
+                           "Ces informations peuvent avoir été ajoutées ou modifiées.")
+        if k >= 3 and len(low) == k:
+            limitations.append("Le modèle visuel, lui, ne relève pas de traces IA : les indices divergent.")
+    elif k < 3:
         conclusion = "inconclusive"
         limitations.append("Trop peu d'images ont pu être analysées pour conclure.")
     elif len(high) >= math.ceil(2 * k / 3):
@@ -100,4 +178,4 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
                     "Le son n'est pas analysé.",
                     "Aucun score n'est affiché : sa signification n'a pas encore été validée par nos propres tests."]
     return DetectorOutput(indicators=[keyframes, temporal, not_sent], conclusion=conclusion,
-                          limitations=limitations, detection_available=k > 0)
+                          limitations=limitations, detection_available=k > 0 or ai_declared)

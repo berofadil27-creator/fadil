@@ -56,7 +56,7 @@ export default function Fiabilite() {
         <h2>Vidéo</h2>
         <p>
           Votre téléphone ou ordinateur extrait 6 images de la vidéo ; seules ces images sont analysées. La vidéo
-          elle-même n&apos;est jamais envoyée. Le son, les métadonnées et le montage ne sont pas analysés.
+          elle-même n&apos;est jamais envoyée. Le certificat C2PA éventuel est lu sur votre appareil ; le serveur ne peut pas le revérifier. Le son et le montage ne sont pas analysés.
         </p>
         <p className="muted small">
           Pas encore d&apos;évaluation sur de vraies vidéos : traitez ce résultat avec une prudence particulière.

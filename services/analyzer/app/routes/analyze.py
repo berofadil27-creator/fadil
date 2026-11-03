@@ -34,7 +34,8 @@ async def analyze_image(file: UploadFile = File(...), cid: str = Depends(client_
 @router.post("/video", response_model=AnalysisResult,
              summary="Analyser une vidéo (images extraites par le navigateur)")
 async def analyze_video(frames: list[UploadFile] = File(...), timestamps: str = Form(...),
-                        duration: float | None = Form(None), cid: str = Depends(client_id)):
+                        duration: float | None = Form(None), provenance: str | None = Form(None),
+                        cid: str = Depends(client_id)):
     if not config.VIDEO_FRAMES_MIN <= len(frames) <= config.VIDEO_FRAMES_MAX:
         raise VeyraError(422, "bad_frames",
                          f"Il faut entre {config.VIDEO_FRAMES_MIN} et {config.VIDEO_FRAMES_MAX} images extraites.")
@@ -48,5 +49,6 @@ async def analyze_video(frames: list[UploadFile] = File(...), timestamps: str = 
         raise VeyraError(422, "bad_frames", "Horodatages des images invalides.")
     if len(ts) != len(data):
         raise VeyraError(422, "bad_frames", "Chaque image doit avoir un horodatage.")
+    prov = video_detector.parse_client_provenance(provenance)
     rate_limit.check(cid)
-    return orchestrator.run(cid, "video", lambda: video_detector.analyze(data, ts, duration))
+    return orchestrator.run(cid, "video", lambda: video_detector.analyze(data, ts, duration, prov))

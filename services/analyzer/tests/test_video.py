@@ -58,3 +58,61 @@ def test_take_quota_all_or_nothing(monkeypatch):
     assert vms.take_quota(vms.DAILY_CAP - 2)
     assert not vms.take_quota(3)
     assert vms.take_quota(2)
+
+
+# --- 8.5 : provenance C2PA lue par le navigateur ---
+import json
+
+P = video_detector.parse_client_provenance
+
+
+def test_parse_rejects_garbage():
+    assert P(None) is None and P("") is None and P("{bad") is None
+    assert P(json.dumps({"status": "hacked"})) is None
+    assert P("x" * 5000) is None
+
+
+def test_parse_maps_source_types():
+    p = P(json.dumps({"status": "valid", "issuer": "OpenAI", "generator": "Sora",
+                      "source_types": ["trainedAlgorithmicMedia", 3, "unknown"]}))
+    assert p.ai_declarations == ["créé par une IA générative"] and p.capture_declarations == []
+
+
+def test_no_provenance_says_not_performed(monkeypatch):
+    _levels(monkeypatch, ["low"] * 6)
+    out = video_detector.analyze(F, T, 6.0)
+    prov = [i for i in out.indicators if i.name == "content_provenance"][0]
+    assert prov.status == "not_performed"
+
+
+def test_absent_provenance_does_not_change_conclusion(monkeypatch):
+    _levels(monkeypatch, ["low"] * 6)
+    out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "absent"})))
+    prov = [i for i in out.indicators if i.name == "content_provenance"][0]
+    assert prov.status == "not_found" and out.conclusion == "likely_human"
+    assert "appareil" in prov.explanation
+
+
+def test_signed_ai_declaration_is_likely_ai(monkeypatch):
+    _levels(monkeypatch, ["low"] * 6)
+    out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "valid", "source_types": ["trainedAlgorithmicMedia"]})))
+    assert out.conclusion == "likely_ai"
+    assert any("divergent" in l for l in out.limitations)
+
+
+def test_invalid_signature_ignored(monkeypatch):
+    _levels(monkeypatch, ["low"] * 6)
+    out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "invalid", "source_types": ["trainedAlgorithmicMedia"]})))
+    assert out.conclusion == "likely_human"
+
+
+def test_capture_declaration_never_proves_human(monkeypatch):
+    _levels(monkeypatch, ["high"] * 2 + ["uncertain"] * 4)
+    out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "trusted", "source_types": ["digitalCapture"]})))
+    assert out.conclusion == "inconclusive"
+
+
+def test_ai_declaration_when_quota_reached(monkeypatch):
+    monkeypatch.setattr(vms, "take_quota", lambda n=1: False)
+    out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "valid", "source_types": ["trainedAlgorithmicMedia"]})))
+    assert out.conclusion == "likely_ai" and out.detection_available

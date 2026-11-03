@@ -5,6 +5,7 @@ import { CONTENT_LABELS } from "@/lib/types";
 import { LIMITS, formatBytes, validateFile, validateText } from "@/lib/validation";
 import { analyze } from "@/lib/api";
 import { extractFrames } from "@/lib/videoFrames";
+import { readVideoProvenance } from "@/lib/videoProvenance";
 import { saveToHistory } from "@/lib/history";
 import ResultView from "@/components/ResultView";
 
@@ -42,12 +43,16 @@ export default function AnalyzeWorkspace() {
     setPhase("loading");
     const first = { label: tab === "text" ? "Vérification de la longueur du texte" : "Vérification du format et de la taille", done: true };
     const send = { label: tab === "video" ? "Envoi des images au serveur VEYRA et analyse" : "Envoi au serveur VEYRA et vérification", done: false };
-    const extract = { label: "Extraction de 6 images dans votre navigateur", done: false };
+    const extract = { label: "Extraction de 6 images et lecture du certificat C2PA dans votre navigateur", done: false };
     setSteps(tab === "video" ? [first, extract, send] : [first, send]);
     try {
       let input: Parameters<typeof analyze>[1] = tab === "text" ? text : (file as File);
       if (tab === "video") {
-        input = await extractFrames(file as File, 6);
+        const [frames, provenance] = await Promise.all([
+          extractFrames(file as File, 6),
+          readVideoProvenance(file as File),
+        ]);
+        input = { ...frames, provenance };
         setSteps([first, { ...extract, done: true }, send]);
       }
       const r = await analyze(tab, input);
@@ -121,7 +126,7 @@ export default function AnalyzeWorkspace() {
             </span>
           </label>
           {tab === "video" && (
-            <p className="muted small">La vidéo reste sur votre appareil : seules 6 images extraites sont envoyées et analysées. Le son n&apos;est pas analysé.</p>
+            <p className="muted small">La vidéo reste sur votre appareil : seules 6 images extraites sont envoyées et analysées. Le certificat C2PA éventuel est lu sur votre appareil. Le son n&apos;est pas analysé.</p>
           )}
         </>
       )}
