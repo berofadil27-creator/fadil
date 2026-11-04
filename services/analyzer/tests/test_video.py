@@ -116,3 +116,32 @@ def test_ai_declaration_when_quota_reached(monkeypatch):
     monkeypatch.setattr(vms, "take_quota", lambda n=1: False)
     out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "valid", "source_types": ["trainedAlgorithmicMedia"]})))
     assert out.conclusion == "likely_ai" and out.detection_available
+
+
+# --- 8.6 : indice d'IA dès la moitié des images ---
+def _hint(out):
+    return [i for i in out.indicators if i.name == "ai_hint"]
+
+
+def test_half_high_gives_ai_hint(monkeypatch):
+    _levels(monkeypatch, ["high"] * 3 + ["low"] * 3)
+    out = video_detector.analyze(F, T, 14.0)
+    assert out.conclusion == "inconclusive" and len(_hint(out)) == 1
+
+
+def test_less_than_half_no_hint(monkeypatch):
+    _levels(monkeypatch, ["high"] * 2 + ["low"] * 4)
+    out = video_detector.analyze(F, T, 6.0)
+    assert out.conclusion == "inconclusive" and not _hint(out)
+
+
+def test_two_thirds_still_likely_ai_without_hint(monkeypatch):
+    _levels(monkeypatch, ["high"] * 4 + ["low"] * 2)
+    out = video_detector.analyze(F, T, 6.0)
+    assert out.conclusion == "likely_ai" and not _hint(out)
+
+
+def test_too_few_frames_no_hint(monkeypatch):
+    _levels(monkeypatch, ["high", "low", None, None, None, None])
+    out = video_detector.analyze(F, T, 6.0)
+    assert not _hint(out)

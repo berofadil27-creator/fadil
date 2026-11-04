@@ -153,6 +153,7 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
             "image sont comparés, pas le mouvement."))
 
     limitations = []
+    hint = None
     if ai_declared:
         conclusion = "likely_ai"
         limitations.append("Le fichier vidéo déclare lui-même une création par IA (C2PA, lu par votre appareil). "
@@ -170,6 +171,15 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
         conclusion = "likely_human"
         limitations.append("Le modèle ne repère pas les échanges de visage (deepfakes), les retouches "
                            "partielles ni les voix générées : une vidéo réelle modifiée peut passer inaperçue.")
+    elif len(high) * 2 >= k:
+        # Étape 8.6 : au moins la moitié des images ont des traces IA nettes, sans atteindre 2/3.
+        # Indice d'IA affiché, mais pas de conclusion ferme : une vraie vidéo peut être concernée.
+        conclusion = "inconclusive"
+        hint = Indicator(name="ai_hint", status="found", explanation=(
+            f"Indice d'IA : {len(high)} images sur {k} présentent de nombreuses caractéristiques typiques "
+            "de l'IA. C'est un signal, pas une preuve : il n'atteint pas le seuil de conclusion (2/3 des images)."))
+        limitations.append("La moitié au moins des images analysées évoquent une génération IA, mais pas assez "
+                           "pour conclure : une vraie vidéo retouchée ou compressée peut produire ce résultat.")
     else:
         conclusion = "inconclusive"
         limitations.append("Les images analysées ne permettent pas de conclure.")
@@ -177,5 +187,6 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
                     "Aucune image n'a pu être examinée.",
                     "Le son n'est pas analysé.",
                     "Aucun score n'est affiché : sa signification n'a pas encore été validée par nos propres tests."]
-    return DetectorOutput(indicators=[keyframes, temporal, not_sent], conclusion=conclusion,
+    indicators = [keyframes, temporal, not_sent] + ([hint] if hint else [])
+    return DetectorOutput(indicators=indicators, conclusion=conclusion,
                           limitations=limitations, detection_available=k > 0 or ai_declared)

@@ -56,10 +56,10 @@ export default function Fiabilite() {
         <h2>Vidéo</h2>
         <p>
           Votre téléphone ou ordinateur extrait 6 images de la vidéo ; seules ces images sont analysées. La vidéo
-          elle-même n&apos;est jamais envoyée. Le certificat C2PA éventuel est lu sur votre appareil ; le serveur ne peut pas le revérifier. Le son et le montage ne sont pas analysés.
+          elle-même n&apos;est jamais envoyée. Le certificat C2PA éventuel est lu sur votre appareil ; le serveur ne peut pas le revérifier. Le son et le montage ne sont pas analysés. Conclusion « IA » si au moins 2 images sur 3 présentent des traces nettes ; à partir de la moitié, « Indéterminé — indice d&apos;IA ».
         </p>
         <p className="muted small">
-          Pas encore d&apos;évaluation sur de vraies vidéos : traitez ce résultat avec une prudence particulière.
+          Premiers essais réels : 2 vidéos IA, 1 reconnue, 1 qui obtiendrait aujourd&apos;hui « indice d&apos;IA ». Aucune vraie vidéo testée : traitez ce résultat avec une prudence particulière.
         </p>
       </section>
 

@@ -106,3 +106,9 @@ Scripts et résultats : hors dépôt (eval/fetch_human2.py, ws_prose.py, gen_ai2
 - Règles : déclaration IA signée et intacte → « likely_ai » (comme pour les photos) ; signature invalide ignorée ; une déclaration de capture ne prouve jamais l'origine humaine.
 - Test navigateur (Chromium, requête interceptée, aucun appel Sightengine) : vidéo signée de test → valid ; sans manifeste → absent ; vidéo signée « trainedAlgorithmicMedia » → valid + déclaration IA. Fichier altéré : illisible par le navigateur, cas « invalide » couvert par les tests serveur seulement.
 - 53 tests backend passent. Limites : vidéos de test seulement (aucune vraie vidéo IA signée, par ex. Sora) ; réseaux sociaux retirent souvent C2PA ; lecture lente sur téléphone (premier chargement du module).
+
+## 8.6 Vidéo : « Indéterminé — indice d'IA » (2026-11-05)
+- Cas réel : vidéo IA confirmée par l'utilisateur, 3/6 images « high » → Indéterminé (seuil 2/3 non atteint).
+- Nouvelle règle : si au moins la moitié des images analysées (≥ 3) sont « high » sans atteindre 2/3, la conclusion reste `inconclusive` mais un indicateur `ai_hint` est ajouté ; le site affiche « Indéterminé — indice d'IA ». Le seuil de conclusion « IA » (2/3) n'est pas abaissé, faute de test sur de vraies vidéos (risque de faux positif).
+- Option écartée pour l'instant : 12 images au lieu de 6 (≈ 60 opérations Sightengine par vidéo au lieu de 30).
+- 57 tests backend passent ; tsc OK. Aucune opération Sightengine consommée.

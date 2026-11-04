@@ -45,10 +45,18 @@ export function isWeakTextSignal(r: Pick<AnalysisResult, "content_type" | "concl
   return r.conclusion === "inconclusive" && r.indicators?.some((i) => i.name === "statistical_signals" && i.status === "found");
 }
 
+/** Étape 8.6 : vidéo dont au moins la moitié des images ont des traces IA, sans atteindre 2/3. */
+export function isVideoAiHint(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): boolean {
+  return r.content_type === "video" && r.conclusion === "inconclusive" &&
+    !!r.indicators?.some((i) => i.name === "ai_hint" && i.status === "found");
+}
+
 export function conclusionLabel(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): string {
-  return isWeakTextSignal(r) ? "Indéterminé — indice faible d’écriture IA" : CONCLUSION_LABELS[r.conclusion];
+  if (isWeakTextSignal(r)) return "Indéterminé — indice faible d’écriture IA";
+  if (isVideoAiHint(r)) return "Indéterminé — indice d’IA";
+  return CONCLUSION_LABELS[r.conclusion];
 }
 
 export function conclusionClass(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): string {
-  return isWeakTextSignal(r) ? "c-weak" : `c-${r.conclusion}`;
+  return isWeakTextSignal(r) || isVideoAiHint(r) ? "c-weak" : `c-${r.conclusion}`;
 }
