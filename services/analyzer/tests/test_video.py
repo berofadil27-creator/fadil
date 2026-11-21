@@ -27,10 +27,10 @@ def test_mostly_high_is_likely_ai(monkeypatch):
     assert "6 images" in out.indicators[0].explanation
 
 
-def test_all_low_is_likely_human(monkeypatch):
+def test_all_low_is_inconclusive_never_human(monkeypatch):
     _levels(monkeypatch, ["low"] * 6)
     out = video_detector.analyze(F, T, 6.0)
-    assert out.conclusion == "likely_human"
+    assert out.conclusion == "inconclusive"
     assert any("deepfake" in l for l in out.limitations)
 
 
@@ -89,7 +89,7 @@ def test_absent_provenance_does_not_change_conclusion(monkeypatch):
     _levels(monkeypatch, ["low"] * 6)
     out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "absent"})))
     prov = [i for i in out.indicators if i.name == "content_provenance"][0]
-    assert prov.status == "not_found" and out.conclusion == "likely_human"
+    assert prov.status == "not_found" and out.conclusion == "inconclusive"
     assert "appareil" in prov.explanation
 
 
@@ -103,7 +103,7 @@ def test_signed_ai_declaration_is_likely_ai(monkeypatch):
 def test_invalid_signature_ignored(monkeypatch):
     _levels(monkeypatch, ["low"] * 6)
     out = video_detector.analyze(F, T, 6.0, P(json.dumps({"status": "invalid", "source_types": ["trainedAlgorithmicMedia"]})))
-    assert out.conclusion == "likely_human"
+    assert out.conclusion == "inconclusive"
 
 
 def test_capture_declaration_never_proves_human(monkeypatch):

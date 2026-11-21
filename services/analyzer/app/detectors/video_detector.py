@@ -7,8 +7,8 @@ analysée par le modèle visuel (Sightengine « genai »), puis les résultats s
 Règles de conclusion (prudentes, seuils provisoires) :
 - moins de 3 images analysées : « inconclusive » ;
 - au moins 2/3 des images analysées avec des traces IA nettes : « likely_ai » ;
-- toutes les images analysées (au moins 4) sans trace IA : « likely_human », avec la limite que
-  le modèle ne repère pas les échanges de visage, les retouches partielles ni le son ;
+- jamais « likely_human » (2026-11-21) : une vidéo IA très réaliste a eu 6/6 images sans trace IA.
+  Aucune trace IA sur les images analysées → « inconclusive », formulé sans affirmer l'origine ;
 - sinon « inconclusive ».
 Le rapport dit toujours combien d'images ont été examinées : jamais « toute la vidéo ».
 """
@@ -167,10 +167,14 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
         conclusion = "likely_ai"
         limitations.append("Cette conclusion repose sur un modèle statistique appliqué à quelques images : "
                            "une vraie vidéo très retouchée ou compressée peut être classée à tort.")
-    elif len(low) == k and k >= 4:
-        conclusion = "likely_human"
-        limitations.append("Le modèle ne repère pas les échanges de visage (deepfakes), les retouches "
-                           "partielles ni les voix générées : une vidéo réelle modifiée peut passer inaperçue.")
+    elif len(low) == k:
+        # Pas de verdict « humain » en vidéo : les générateurs récents passent souvent inaperçus.
+        conclusion = "inconclusive"
+        limitations.append("Aucune trace d'IA n'a été relevée sur les images analysées, mais cela ne prouve pas "
+                           "que la vidéo est réelle : les vidéos IA récentes et très réalistes échappent souvent "
+                           "au modèle. VEYRA ne conclut donc jamais qu'une vidéo est d'origine humaine.")
+        limitations.append("Le modèle ne repère pas non plus les échanges de visage (deepfakes), les retouches "
+                           "partielles ni les voix générées.")
     elif len(high) * 2 >= k:
         # Étape 8.6 : au moins la moitié des images ont des traces IA nettes, sans atteindre 2/3.
         # Indice d'IA affiché, mais pas de conclusion ferme : une vraie vidéo peut être concernée.
