@@ -175,14 +175,21 @@ def analyze(frames: list[bytes], timestamps: list[float], duration: float | None
                            "au modèle. VEYRA ne conclut donc jamais qu'une vidéo est d'origine humaine.")
         limitations.append("Le modèle ne repère pas non plus les échanges de visage (deepfakes), les retouches "
                            "partielles ni les voix générées.")
-    elif len(high) * 2 >= k:
+    elif len(high) * 2 >= k or len(high) + len(unc) >= max(3, math.ceil(k / 2)):
         # Étape 8.6 : au moins la moitié des images ont des traces IA nettes, sans atteindre 2/3.
+        # 2026-11-23 : ou au moins la moitié des images sont IA ou ambiguës (vraies vidéos testées : ≤ 1 ambiguë).
         # Indice d'IA affiché, mais pas de conclusion ferme : une vraie vidéo peut être concernée.
         conclusion = "inconclusive"
+        if len(high) * 2 >= k:
+            detail = f"{len(high)} images sur {k} présentent de nombreuses caractéristiques typiques de l'IA"
+        else:
+            detail = (f"{len(high) + len(unc)} images sur {k} présentent des caractéristiques typiques de l'IA "
+                      f"ou ambiguës ({len(high)} nette{'s' if len(high) > 1 else ''}, {len(unc)} ambiguë"
+                      f"{'s' if len(unc) > 1 else ''})")
         hint = Indicator(name="ai_hint", status="found", explanation=(
-            f"Indice d'IA : {len(high)} images sur {k} présentent de nombreuses caractéristiques typiques "
-            "de l'IA. C'est un signal, pas une preuve : il n'atteint pas le seuil de conclusion (2/3 des images)."))
-        limitations.append("La moitié au moins des images analysées évoquent une génération IA, mais pas assez "
+            f"Indice d'IA : {detail}. C'est un signal, pas une preuve : il n'atteint pas le seuil de "
+            "conclusion (2/3 des images avec des traces nettes)."))
+        limitations.append("Une partie importante des images analysées évoque une génération IA, mais pas assez "
                            "pour conclure : une vraie vidéo retouchée ou compressée peut produire ce résultat.")
     else:
         conclusion = "inconclusive"

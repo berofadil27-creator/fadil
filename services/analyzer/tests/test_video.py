@@ -145,3 +145,28 @@ def test_too_few_frames_no_hint(monkeypatch):
     _levels(monkeypatch, ["high", "low", None, None, None, None])
     out = video_detector.analyze(F, T, 6.0)
     assert not _hint(out)
+
+
+# --- 2026-11-23 : images IA + ambiguës ≥ 3 sur 6 → indice ---
+def test_many_uncertain_gives_hint(monkeypatch):
+    _levels(monkeypatch, ["uncertain"] * 4 + ["low"] * 2)
+    out = video_detector.analyze(F, T, 20.0)
+    assert out.conclusion == "inconclusive" and len(_hint(out)) == 1
+    assert "4 images sur 6" in _hint(out)[0].explanation
+
+
+def test_one_high_three_uncertain_gives_hint(monkeypatch):
+    _levels(monkeypatch, ["high"] + ["uncertain"] * 3 + ["low"] * 2)
+    out = video_detector.analyze(F, T, 8.0)
+    assert out.conclusion == "inconclusive" and len(_hint(out)) == 1
+
+
+def test_real_video_profile_no_hint(monkeypatch):
+    _levels(monkeypatch, ["uncertain"] + ["low"] * 5)
+    out = video_detector.analyze(F, T, 14.0)
+    assert out.conclusion == "inconclusive" and not _hint(out)
+
+
+def test_two_uncertain_no_hint(monkeypatch):
+    _levels(monkeypatch, ["uncertain"] * 2 + ["low"] * 4)
+    assert not _hint(video_detector.analyze(F, T, 6.0))
