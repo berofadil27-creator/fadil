@@ -51,9 +51,17 @@ export function isVideoAiHint(r: Pick<AnalysisResult, "content_type" | "conclusi
     !!r.indicators?.some((i) => i.name === "ai_hint" && i.status === "found");
 }
 
+/** 2026-11-23 : vidéo sans indice et sans image IA nette → « Aucune trace d'IA détectée » (jamais « humain »). */
+export function isVideoNoTrace(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): boolean {
+  if (r.content_type !== "video" || r.conclusion !== "inconclusive" || isVideoAiHint(r)) return false;
+  const kf = r.indicators?.find((i) => i.name === "keyframes");
+  return !!kf && (kf.status === "not_found" || kf.status === "uncertain");
+}
+
 export function conclusionLabel(r: Pick<AnalysisResult, "content_type" | "conclusion" | "indicators">): string {
   if (isWeakTextSignal(r)) return "Indéterminé — indice faible d’écriture IA";
   if (isVideoAiHint(r)) return "Indéterminé — indice d’IA";
+  if (isVideoNoTrace(r)) return "Aucune trace d’IA détectée";
   return CONCLUSION_LABELS[r.conclusion];
 }
 
